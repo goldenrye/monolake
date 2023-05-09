@@ -1,0 +1,33 @@
+[package]
+name = "monolake-core"
+version = "0.2.0"
+edition = "2021"
+
+[dependencies]
+monoio = { version = "0.1.2", features = ['splice'] }
+monoio-http = { git = "https://github.com/monoio-rs/monoio-http.git", branch = "conn-pool-fix" }
+
+tower-layer = "0"
+thiserror = "1"
+anyhow = "1"
+http = "0.2"
+http-serde = "1"
+bytes = "1"
+
+serde = "1"
+serde_derive = "1"
+serde_json = "1"
+toml = "0"
+serde_valid = "0"
+
+log = "0.4"
+
+figlet-rs = "0.1"
+lazy_static = "1"
+
+rustls = { version = "0" }
+rustls-pemfile = "1"
+native-tls = "0"
+webpki-roots = "0.22"
+sha2 = "0"
+hex = "0"

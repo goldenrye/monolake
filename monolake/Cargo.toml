@@ -1,0 +1,39 @@
+[package]
+name = "monolake"
+version = "0.2.0"
+edition = "2021"
+keywords = ["monoio", "http", "async"]
+description = "Proxy solution base on monoio"
+
+[dependencies]
+monolake-core = { path = "../monolake-core" }
+monolake-services = { path = "../monolake-services" }
+
+monoio = "0"
+monoio-http = { git = "https://github.com/monoio-rs/monoio-http.git", branch = "conn-pool-fix" }
+monoio-http-client = { git = "https://github.com/monoio-rs/monoio-http.git", branch = "conn-pool-fix", features = [
+    "logging",
+    "tls",
+] }
+
+monoio-nativetls = { git = "https://github.com/monoio-rs/monoio-tls.git", branch = "monoio-nativetls" }
+native-tls = "0"
+openssl-sys = "0"
+
+monoio-rustls = { git = "https://github.com/monoio-rs/monoio-tls.git", branch = "monoio-nativetls" }
+
+bytes = "1"
+http = "0.2"
+httparse = "1"
+thiserror = "1"
+anyhow = "1"
+# logger
+env_logger = "0.10"
+log = "0.4"
+clap = { version = "4", features = ['derive'] }
+
+serde = "1"
+serde_json = "1"
+serde_derive = "1"
+io-uring = "0.5"
+tower-layer = "0"

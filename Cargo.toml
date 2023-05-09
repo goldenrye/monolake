@@ -1,8 +1,6 @@
 [workspace]
-members = [
-    "monoio-gateway",
-    "monoio-gateway-core",
-    "monoio-gateway-services",
-    # examples
-    "examples"
-]
+members = ["monolake", "monolake-core", "monolake-services"]
+
+[profile.release-lto]
+inherits = "release"
+lto = true
