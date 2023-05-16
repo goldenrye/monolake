@@ -22,14 +22,14 @@ log = "0.4"
 http = "0.2"
 bytes = "1"
 
-monoio-rustls = { git = "https://github.com/monoio-rs/monoio-tls.git", branch = "monoio-nativetls" }
-rustls = { version = "0" }
+monoio-rustls = { version = "0.1.2" }
+rustls = { version = "0.21" }
 rustls-pemfile = "1"
-webpki-roots = "0.22"
+webpki-roots = "0.23"
 
-monoio-nativetls = { git = "https://github.com/monoio-rs/monoio-tls.git", branch = "monoio-nativetls" }
-native-tls = "0"
-openssl-sys = "0"
+monoio-native-tls = { version = "0.1.0" }
+native-tls = "0.2"
+openssl-sys = "0.9"
 
 
 async-channel = "1"

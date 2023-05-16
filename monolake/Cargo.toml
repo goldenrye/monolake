@@ -16,11 +16,11 @@ monoio-http-client = { git = "https://github.com/monoio-rs/monoio-http.git", bra
     "tls",
 ] }
 
-monoio-nativetls = { git = "https://github.com/monoio-rs/monoio-tls.git", branch = "monoio-nativetls" }
+monoio-rustls = { version = "0.1.2" }
+
+monoio-native-tls = { version = "0.1.0" }
 native-tls = "0"
 openssl-sys = "0"
-
-monoio-rustls = { git = "https://github.com/monoio-rs/monoio-tls.git", branch = "monoio-nativetls" }
 
 bytes = "1"
 http = "0.2"

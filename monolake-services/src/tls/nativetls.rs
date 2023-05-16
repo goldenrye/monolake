@@ -1,8 +1,8 @@
-use std::{future::Future, sync::Arc};
+use std::future::Future;
 
 use anyhow::bail;
 use monoio::io::{AsyncReadRent, AsyncWriteRent, Split};
-use monoio_nativetls::{TlsAcceptor, TlsStream};
+use monoio_native_tls::{TlsAcceptor, TlsStream};
 use monolake_core::{
     service::ServiceError,
     service::{Service, ServiceLayer},
@@ -68,7 +68,7 @@ impl<T> NativeTlsService<T> {
     fn get_acceptor(&self) -> anyhow::Result<TlsAcceptor> {
         let builder = native_tls::TlsAcceptor::builder(self.identity.clone());
         match builder.build() {
-            Ok(acceptor) => Ok(TlsAcceptor::from(Arc::new(acceptor))),
+            Ok(acceptor) => Ok(TlsAcceptor::from(acceptor)),
             Err(e) => bail!("Tls acceptor configure error: {:?}", e),
         }
     }

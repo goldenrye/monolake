@@ -78,17 +78,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-recursion"
-version = "1.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e97ce7de6cf12de5d7226c73f5ba9811622f4db3a5b91b55c53e987e5f91cba"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.15",
-]
-
-[[package]]
 name = "auto-const-array"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -616,9 +605,9 @@ dependencies = [
 
 [[package]]
 name = "monoio"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "762fe3b52f2193a2b28ac992576f60b282b63e2fe80549f906e8d2f4a48e1c81"
+checksum = "1c3b3cf3193f8a8697bfc8310acc2e913df4beccb570a08fdf1200235ac73e21"
 dependencies = [
  "auto-const-array",
  "bytes",
@@ -675,14 +664,23 @@ dependencies = [
  "local-sync",
  "monoio",
  "monoio-http",
- "monoio-rustls",
+ "monoio-rustls 0.1.1",
  "rustls",
  "serde",
  "serde_json",
  "smol_str",
  "thiserror",
  "tracing",
- "webpki-roots",
+ "webpki-roots 0.22.6",
+]
+
+[[package]]
+name = "monoio-io-wrapper"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "553fa5f587e4dfcb661ef7b1a79750555c6eace117fa19351bfa904eed51eb05"
+dependencies = [
+ "monoio",
 ]
 
 [[package]]
@@ -697,20 +695,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "monoio-nativetls"
-version = "0.0.1"
-source = "git+https://github.com/monoio-rs/monoio-tls.git?branch=monoio-nativetls#1733f9fd55996834651f81147ea863ebd189624d"
+name = "monoio-native-tls"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "987b149f205ba60f16b725c65058abd400204fe1dae7b6f06464d2fa22490875"
 dependencies = [
- "anyhow",
- "async-recursion",
  "bytes",
  "monoio",
- "monoio-common",
+ "monoio-io-wrapper",
  "native-tls",
- "openssl",
- "openssl-sys",
  "thiserror",
- "tracing",
 ]
 
 [[package]]
@@ -724,6 +718,19 @@ dependencies = [
  "rustls",
  "thiserror",
  "tracing",
+]
+
+[[package]]
+name = "monoio-rustls"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c047679d27fd16bfc875c8e2043bf35530b43a5417525e491dd2507ffbd43808"
+dependencies = [
+ "bytes",
+ "monoio",
+ "monoio-io-wrapper",
+ "rustls",
+ "thiserror",
 ]
 
 [[package]]
@@ -741,8 +748,8 @@ dependencies = [
  "monoio",
  "monoio-http",
  "monoio-http-client",
- "monoio-nativetls",
- "monoio-rustls",
+ "monoio-native-tls",
+ "monoio-rustls 0.1.2",
  "monolake-core",
  "monolake-services",
  "native-tls",
@@ -779,7 +786,7 @@ dependencies = [
  "thiserror",
  "toml",
  "tower-layer",
- "webpki-roots",
+ "webpki-roots 0.22.6",
 ]
 
 [[package]]
@@ -795,8 +802,8 @@ dependencies = [
  "monoio",
  "monoio-http",
  "monoio-http-client",
- "monoio-nativetls",
- "monoio-rustls",
+ "monoio-native-tls",
+ "monoio-rustls 0.1.2",
  "monolake-core",
  "native-tls",
  "openssl-sys",
@@ -805,7 +812,7 @@ dependencies = [
  "rustls",
  "rustls-pemfile",
  "tower-layer",
- "webpki-roots",
+ "webpki-roots 0.23.0",
 ]
 
 [[package]]
@@ -1560,6 +1567,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6c71e40d7d2c34a5106301fb632274ca37242cd0c9d3e64dbece371a40a2d87"
 dependencies = [
  "webpki",
+]
+
+[[package]]
+name = "webpki-roots"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aa54963694b65584e170cf5dc46aeb4dcaa5584e652ff5f3952e56d66aff0125"
+dependencies = [
+ "rustls-webpki",
 ]
 
 [[package]]

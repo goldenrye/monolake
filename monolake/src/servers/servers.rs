@@ -102,9 +102,8 @@ impl Server for Servers {
         async move {
             // init logging
             env_logger::init();
-            // TODO: uncomment after release the monoio-nativetls
             // init openssl engine
-            monoio_nativetls::init();
+            monoio_native_tls::init();
 
             for server in &mut self.servers {
                 server.init().await?;
