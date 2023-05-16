@@ -9,9 +9,9 @@ description = "Proxy solution base on monoio"
 monolake-core = { path = "../monolake-core" }
 monolake-services = { path = "../monolake-services" }
 
-monoio = "0"
-monoio-http = { git = "https://github.com/monoio-rs/monoio-http.git", branch = "conn-pool-fix" }
-monoio-http-client = { git = "https://github.com/monoio-rs/monoio-http.git", branch = "conn-pool-fix", features = [
+monoio = "0.1.3"
+monoio-http = { version = "0.1.0", path = "../../monoio-http/monoio-http" }
+monoio-http-client = { version = "0.1.0", path = "../../monoio-http/monoio-http-client", features = [
     "logging",
     "tls",
 ] }

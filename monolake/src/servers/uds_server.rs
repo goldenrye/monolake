@@ -20,7 +20,7 @@ use std::{
     cell::UnsafeCell,
     future::Future,
     os::{
-        fd::{IntoRawFd, RawFd},
+        fd::{FromRawFd, IntoRawFd, RawFd},
         unix::net::UnixListener as StdUnixListener,
     },
     path::PathBuf,
@@ -103,11 +103,9 @@ impl UdsServer {
     {
         let listener: Rc<UnixListener> = match self.listener {
             Some(raw_fd) => unsafe {
-                // TODO: uncomment the following logic to support uds
-                // Rc::new(UnixListener::from_std(StdUnixListener::from_raw_fd(
-                //     raw_fd,
-                // ))?)
-                bail!("Need monoio release the patch of UnixListener::from_std")
+                Rc::new(UnixListener::from_std(StdUnixListener::from_raw_fd(
+                    raw_fd,
+                ))?)
             },
             None => bail!("The raw fd is not exist for the uds listener"),
         };
@@ -157,7 +155,7 @@ impl Server for UdsServer {
                     ConnReuseHandler::layer(self.keepalive_config.clone()),
                 )
                     .layer(ProxyHandler::new(client.clone())),
-                self.keepalive_config.clone()
+                self.keepalive_config.clone(),
             );
 
             match &self.tls {

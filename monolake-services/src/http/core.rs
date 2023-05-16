@@ -1,6 +1,7 @@
+use std::time::{Duration, Instant};
 use std::{cell::UnsafeCell, fmt::Debug, future::Future, rc::Rc};
-use std::time::{Instant, Duration};
 
+use crate::http::{COUNTER_HEADER_NAME, TIMER_HEADER_NAME};
 use crate::{common::Accept, http::is_conn_reuse};
 use async_channel::Receiver;
 use http::{HeaderValue, Request, Response, StatusCode};
@@ -19,7 +20,6 @@ use monolake_core::{
     http::{HttpError, HttpHandler},
     service::Service,
 };
-use crate::http::{COUNTER_HEADER_NAME, TIMER_HEADER_NAME};
 
 use super::generate_response;
 
@@ -40,7 +40,7 @@ where
         };
         HttpCoreService {
             handler_chain,
-            timeout
+            timeout,
         }
     }
 
@@ -149,11 +149,17 @@ where
                 // 1) keepalive idle conn timeout. 2) accept request timeout.
                 match monoio::time::timeout(self.timeout, decoder.next()).await {
                     Ok(Some(Ok(mut request))) => {
-                        let counter_header_value = HeaderValue::from_bytes(counter.to_string().as_bytes()).unwrap();
-                        request.headers_mut().insert(COUNTER_HEADER_NAME, counter_header_value);
+                        let counter_header_value =
+                            HeaderValue::from_bytes(counter.to_string().as_bytes()).unwrap();
+                        request
+                            .headers_mut()
+                            .insert(COUNTER_HEADER_NAME, counter_header_value);
                         let elapsed_time: u64 = (Instant::now() - starting_time).as_secs();
-                        let timer_header_value = HeaderValue::from_str(&format!("{}", elapsed_time)).unwrap();
-                        request.headers_mut().insert(TIMER_HEADER_NAME, timer_header_value);
+                        let timer_header_value =
+                            HeaderValue::from_str(&format!("{}", elapsed_time)).unwrap();
+                        request
+                            .headers_mut()
+                            .insert(TIMER_HEADER_NAME, timer_header_value);
                         monoio::spawn(service.clone().process_request(
                             request,
                             encoder.clone(),
@@ -263,7 +269,7 @@ mod tests {
             IntermediateHttpHandler2::layer(),
         )
             .layer(LeafHttpHandler);
-        let service = HttpCoreService::new(handler);
+        let service = HttpCoreService::new(handler, None);
         let request = Request::builder()
             .method("GET")
             .uri("https://www.rust-lang.org/")
