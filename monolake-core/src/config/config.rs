@@ -19,6 +19,10 @@ const READ_BUFFER_SIZE: usize = 8 * 1024;
 // Default iouring/epoll entries: 32k
 const DEFAULT_ENTRIES: u32 = 32768;
 
+pub const DEFAULT_TIME: usize = 3600;
+pub const DEFAULT_TIMEOUT: usize = 75;
+pub const DEFAULT_REQUESTS: usize = 1000;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     #[serde(default)]
@@ -40,6 +44,18 @@ fn default_workers() -> u16 {
 
 fn default_cpu_affinity() -> bool {
     true
+}
+
+fn default_keepalive_requests() -> usize {
+    DEFAULT_REQUESTS
+}
+
+fn default_keepalive_time() -> usize {
+    DEFAULT_TIME
+}
+
+fn default_keepalive_timeout() -> usize {
+    DEFAULT_TIMEOUT
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -85,6 +101,7 @@ pub struct Server {
     pub listeners: Vec<Listener>,
     pub tls: Option<TlsConfig>,
     pub routes: Vec<Route>,
+    pub keepalive_config: Option<KeepaliveConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -105,6 +122,16 @@ impl Default for TlsStack {
     fn default() -> Self {
         Self::Rustls
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct KeepaliveConfig {
+    #[serde(default = "default_keepalive_requests")]
+    pub keepalive_requests: usize,
+    #[serde(default = "default_keepalive_time")]
+    pub keepalive_time: usize,
+    #[serde(default = "default_keepalive_timeout")]
+    pub keepalive_timeout: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

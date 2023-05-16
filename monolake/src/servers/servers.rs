@@ -50,6 +50,7 @@ impl From<HashMap<String, ServerConfig>> for Servers {
                                         addr.socket_addr,
                                         routes,
                                         server_config.tls.to_owned(),
+                                        server_config.keepalive_config.to_owned(),
                                     ))
                                 }
                                 Listener::Uds(addr) => ServerWrapper::UdsServer(UdsServer::new(
@@ -57,6 +58,7 @@ impl From<HashMap<String, ServerConfig>> for Servers {
                                     addr.uds_path,
                                     routes,
                                     server_config.tls.to_owned(),
+                                    server_config.keepalive_config.to_owned(),
                                 )),
                             },
                             _ => ServerWrapper::Unknown,

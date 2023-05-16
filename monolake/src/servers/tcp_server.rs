@@ -4,7 +4,7 @@ use anyhow::{bail, Result};
 use log::{error, info, warn};
 use monoio::net::{ListenerConfig, TcpListener, TcpStream};
 use monolake_core::{
-    config::{Route, TlsConfig, TlsStack},
+    config::{KeepaliveConfig, Route, TlsConfig, TlsStack},
     service::{Service, ServiceLayer},
     tls::update_certificate,
 };
@@ -29,6 +29,7 @@ pub struct TcpServer {
     addr: SocketAddr,
     routes: Vec<Route>,
     tls: Option<TlsConfig>,
+    keepalive_config: Option<KeepaliveConfig>,
 }
 
 impl TcpServer {
@@ -37,12 +38,14 @@ impl TcpServer {
         addr: SocketAddr,
         routes: Vec<Route>,
         tls: Option<TlsConfig>,
+        keepalive_config: Option<KeepaliveConfig>,
     ) -> TcpServer {
         TcpServer {
             name,
             addr,
             routes,
             tls,
+            keepalive_config,
         }
     }
 
@@ -132,9 +135,10 @@ impl Server for TcpServer {
             let service = HttpCoreService::new(
                 (
                     RewriteHandler::layer(Rc::new(self.routes.clone())),
-                    ConnReuseHandler::layer(()),
+                    ConnReuseHandler::layer(self.keepalive_config.clone()),
                 )
                     .layer(ProxyHandler::new(client.clone())),
+                self.keepalive_config.clone()
             );
 
             match &self.tls {

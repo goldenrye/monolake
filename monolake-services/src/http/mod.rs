@@ -1,12 +1,18 @@
 mod core;
 pub use self::core::HttpCoreService;
-use http::{HeaderMap, HeaderValue, Response, StatusCode};
+use http::{HeaderMap, HeaderName, HeaderValue, Response, StatusCode};
 use monoio_http::h1::payload::Payload;
 pub mod handlers;
 
 const CONNECTION: &str = "Connection";
 const CONN_CLOSE: &[u8] = b"close";
 const CONN_KEEP_ALIVE: &[u8] = b"keep-alive";
+
+pub const COUNTER_STR: &'static str = "counter";
+pub const COUNTER_HEADER_NAME: HeaderName = HeaderName::from_static(COUNTER_STR);
+
+pub const TIMER_STR: &'static str = "timer";
+pub const TIMER_HEADER_NAME: HeaderName = HeaderName::from_static(TIMER_STR);
 
 fn generate_response(status_code: StatusCode) -> Response<Payload> {
     let mut resp = Response::builder();

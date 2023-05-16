@@ -2,7 +2,7 @@ use anyhow::{bail, Result};
 use log::{error, info, warn};
 use monoio::net::{unix::SocketAddr, UnixListener, UnixStream};
 use monolake_core::{
-    config::{Route, TlsConfig, TlsStack},
+    config::{KeepaliveConfig, Route, TlsConfig, TlsStack},
     service::{Service, ServiceLayer},
     tls::update_certificate,
 };
@@ -39,6 +39,7 @@ pub struct UdsServer {
     routes: Vec<Route>,
     tls: Option<TlsConfig>,
     listener: Option<RawFd>,
+    keepalive_config: Option<KeepaliveConfig>,
 }
 
 impl UdsServer {
@@ -47,6 +48,7 @@ impl UdsServer {
         addr: PathBuf,
         routes: Vec<Route>,
         tls: Option<TlsConfig>,
+        keepalive_config: Option<KeepaliveConfig>,
     ) -> UdsServer {
         UdsServer {
             name,
@@ -54,6 +56,7 @@ impl UdsServer {
             routes,
             tls,
             listener: None,
+            keepalive_config,
         }
     }
 
@@ -151,9 +154,10 @@ impl Server for UdsServer {
             let service = HttpCoreService::new(
                 (
                     RewriteHandler::layer(Rc::new(self.routes.clone())),
-                    ConnReuseHandler::layer(()),
+                    ConnReuseHandler::layer(self.keepalive_config.clone()),
                 )
                     .layer(ProxyHandler::new(client.clone())),
+                self.keepalive_config.clone()
             );
 
             match &self.tls {

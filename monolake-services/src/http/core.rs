@@ -1,8 +1,9 @@
 use std::{cell::UnsafeCell, fmt::Debug, future::Future, rc::Rc};
+use std::time::{Instant, Duration};
 
 use crate::{common::Accept, http::is_conn_reuse};
 use async_channel::Receiver;
-use http::{Request, Response, StatusCode};
+use http::{HeaderValue, Request, Response, StatusCode};
 use log::{debug, info, warn};
 use monoio::io::{
     sink::{Sink, SinkExt},
@@ -14,23 +15,33 @@ use monoio_http::h1::{
     payload::Payload,
 };
 use monolake_core::{
+    config::{KeepaliveConfig, DEFAULT_TIMEOUT},
     http::{HttpError, HttpHandler},
     service::Service,
 };
+use crate::http::{COUNTER_HEADER_NAME, TIMER_HEADER_NAME};
 
 use super::generate_response;
 
 #[derive(Clone)]
 pub struct HttpCoreService<H: Clone> {
     handler_chain: H,
+    timeout: Duration,
 }
 
 impl<H> HttpCoreService<H>
 where
     H: HttpHandler<Body = Payload> + 'static,
 {
-    pub fn new(handler_chain: H) -> Self {
-        HttpCoreService { handler_chain }
+    pub fn new(handler_chain: H, keepalive_config: Option<KeepaliveConfig>) -> Self {
+        let timeout = match keepalive_config {
+            Some(config) => Duration::from_secs(config.keepalive_timeout as u64),
+            None => Duration::from_secs(DEFAULT_TIMEOUT as u64),
+        };
+        HttpCoreService {
+            handler_chain,
+            timeout
+        }
     }
 
     #[inline]
@@ -127,21 +138,34 @@ where
         let mut decoder = RequestDecoder::new(reader);
         let encoder = Rc::new(UnsafeCell::new(GenericEncoder::new(writer)));
 
+        let mut counter: usize = 0;
+        let starting_time = Instant::now();
+
         async move {
             loop {
-                match decoder.next().await {
-                    Some(Ok(request)) => {
+                counter += 1;
+
+                // Pending refactor due to timeout function have double meaning:
+                // 1) keepalive idle conn timeout. 2) accept request timeout.
+                match monoio::time::timeout(self.timeout, decoder.next()).await {
+                    Ok(Some(Ok(mut request))) => {
+                        let counter_header_value = HeaderValue::from_bytes(counter.to_string().as_bytes()).unwrap();
+                        request.headers_mut().insert(COUNTER_HEADER_NAME, counter_header_value);
+                        let elapsed_time: u64 = (Instant::now() - starting_time).as_secs();
+                        let timer_header_value = HeaderValue::from_str(&format!("{}", elapsed_time)).unwrap();
+                        request.headers_mut().insert(TIMER_HEADER_NAME, timer_header_value);
                         monoio::spawn(service.clone().process_request(
                             request,
                             encoder.clone(),
                             rx.clone(),
                         ));
                     }
-                    Some(Err(err)) => {
+                    Ok(Some(Err(err))) => {
                         warn!("{}", err);
                         break;
                     }
-                    None => {
+                    _ => {
+                        info!("Connection {:?} timed out", addr);
                         break;
                     }
                 }
