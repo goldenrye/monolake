@@ -1,5 +1,8 @@
 /target
 .vscode
+.idea
+.swp
 *.pem
-/examples/tmp
-Cargo.lock
+
+/exmaples/tmp
+
