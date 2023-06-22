@@ -9,4 +9,5 @@ pub enum ValueType {
     SocketAddr(SocketAddr),
     Path(PathBuf),
     String(String),
+    Bytes(Vec<u8>),
 }
