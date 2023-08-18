@@ -1,82 +1,27 @@
 # Monolake
 
-A high performance reverse proxy based on [Monoio](http://github.com/bytedance/monoio).
+Introducing Monolake: a Rust-based proxy with a focus on performance and scale. Leveraging the Monoio runtime and harnessing io-uring, Monolake capitalizes on Rust's efficiency and memory safety.
 
-## Basic Usage
+# Generating Wiki
 
-```shell
-# debug
-cargo build
-RUST_LOG=debug target/debug/monolake --config examples/config.toml
+The docs folder will eventually move to [cloudwego.io](https://www.cloudwego.io/). You'll have to generate them locally for now.
 
-cargo build release
-RUST_LOG=warn target/release/monolake --config examples/config.toml
-```
+## 1. Install Hugo
 
-## Configuration
-| Name    | Required | Description           |
-| ------- | -------- | --------------------- |
-| runtime | true     | runtime configuration |
-| servers | true     | server configuration  |
+- Install a recent release of the Hugo "extended" version. If you install from the [Hugo release page](https://github.com/gohugoio/hugo/releases), make sure you download the `_extended` version which supports SCSS.
 
+- If you have installed the latest version of Go, you can install directly by running the following command:
+  ```
+  go install -tags extended github.com/gohugoio/hugo@latest
+  ```
 
-### Runtime
-| Name         | Required | Default Value | Description           |
-| ------------ | -------- | ------------- | --------------------- |
-| workers      | true     | max cpu cores | num of worker threads |
-| entries      | true     | 32768         | num of queue entries  |
-| sqpoll_idle  | false    | None          | sqpoll idle entries   |
-| runtime_type | true     | IoUring       | runtime type          |
-| cpu_affinity | true     | true          | is CPU affinity       |
+- Alternatively, you can use the package manager to install Hugo:
+  - For Linux: `sudo apt install hugo`
+  - For macOS: `brew install hugo`
 
-### Server
-| Name             | Required | Default Value | Description      |
-| ---------------- | -------- | ------------- | ---------------- |
-| name             | true     |               | server name      |
-| listener         | true     |               | listeners config |
-| tls              | false    | None          | tls config       |
-| routes           | true     |               | routes config    |
-| keepalive_config | false    | None          | keepalive config |
-### Listener
-#### Socket Listener
-| Name               | Required | Default Value | Description               |
-| ------------------ | -------- | ------------- | ------------------------- |
-| socket_addr        | true     |               | socket address            |
-| transport_protocol | true     | Tcp           | transport protocol config |
+## 2. Run `wiki.sh`
 
-#### UDS Listener
-| Name               | Required | Default Value | Description               |
-| ------------------ | -------- | ------------- | ------------------------- |
-| uds_path           | true     |               | uds path                  |
-| transport_protocol | true     | Tcp           | transport protocol config |
-
-
-### Route
-| Name      | Required | Description        |
-| --------- | -------- | ------------------ |
-| path      | true     | match request path |
-| upstreams | true     | upstream endpoints |
-
-### Example
-
-``` toml
-[runtime]
-workers = 1
-entries = 1024
-
-# example server
-[servers.example]
-name = "gateway.example.com"
-listener = { socket_addr = "0.0.0.0:8080" }
-
-[[servers.example.routes]]
-upstreams = [
-    { endpoint = { uri = "https://www.wikipedia.org" } },
-]
-path = '/'
-```
-
-## Static Compilation
-To compile statically, you have to enable `vendored` feature. Then you can compile with glibc or musl:
-1. `RUSTFLAGS="-C target-feature=+crt-static" cargo build --target x86_64-unknown-linux-gnu`
-2. `cargo build --target=x86_64-unknown-linux-musl`
+- Execute the `wiki.sh` script, which performs the following tasks:
+  - Checks out the [cloudwego/cloudwego.github.io](https://github.com/cloudwego/cloudwego.github.io) repository.
+  - Copies the local `docs` folder to `content/en/docs/monolake/` within the cloned repository.
+  - Starts the Hugo server for preview.
