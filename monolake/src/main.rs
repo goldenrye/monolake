@@ -71,8 +71,8 @@ async fn main() -> Result<()> {
 
     // TODO(ihciah): run update task or api server to do config update, maybe in xDS protocol
     // Wait for workers
-    join_handlers.into_iter().for_each(|h| {
-        h.join().unwrap();
-    });
+    for (_, mut close) in join_handlers.into_iter() {
+        close.cancellation().await;
+    }
     Ok(())
 }

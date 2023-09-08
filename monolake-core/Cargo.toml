@@ -8,7 +8,7 @@ openid = []
 proxy-protocol = []
 
 [dependencies]
-monoio = { workspace = true, features = ['splice'] }
+monoio = { workspace = true, features = ["splice", "sync"] }
 monoio-http = { workspace = true }
 service-async = { workspace = true }
 

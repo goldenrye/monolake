@@ -30,7 +30,12 @@ where
     /// Start workers according to runtime config.
     /// Threads JoinHandle will be returned and each factory Sender will
     /// be saved for config updating.
-    pub fn spawn_workers<A>(&mut self) -> Vec<std::thread::JoinHandle<()>>
+    pub fn spawn_workers<A>(
+        &mut self,
+    ) -> Vec<(
+        std::thread::JoinHandle<()>,
+        futures_channel::oneshot::Sender<()>,
+    )>
     where
         Command<F, LF>: Execute<A, F::Service>,
     {
@@ -45,6 +50,7 @@ where
             .map(|worker_id| {
                 let (tx, rx) = channel(128);
                 let runtime_config = runtime_config.clone();
+                let (finish_tx, mut finish_rx) = futures_channel::oneshot::channel::<()>();
                 let handler = std::thread::Builder::new()
                     .name(format!("monolake-worker-{worker_id}"))
                     .spawn(move || {
@@ -56,11 +62,14 @@ where
                             }
                         }
                         let mut runtime = RuntimeWrapper::from(runtime_config.as_ref());
-                        runtime.block_on(worker_controller.run_controller(rx));
+                        runtime.block_on(async move {
+                            worker_controller.run_controller(rx).await;
+                            finish_rx.close();
+                        });
                     })
                     .expect("start worker thread {worker_id} failed");
                 self.workers.push(tx);
-                handler
+                (handler, finish_tx)
             })
             .collect()
     }
