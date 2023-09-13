@@ -6,7 +6,7 @@ use futures_channel::{
     oneshot::{channel as ochannel, Receiver as OReceiver, Sender as OSender},
 };
 use futures_util::{sink::SinkExt, stream::StreamExt};
-use monoio::{io::stream::Stream, utils::bind_to_cpu_set};
+use monoio::{blocking::DefaultThreadPool, io::stream::Stream, utils::bind_to_cpu_set};
 use service_async::{MakeService, Service};
 use tracing::{error, info, warn};
 
@@ -18,6 +18,7 @@ mod runtime;
 /// Manager is holden by the main thread, and is used to start and control workers.
 pub struct Manager<F, LF> {
     runtime_config: RuntimeConfig,
+    thread_pool: Option<Box<DefaultThreadPool>>,
     workers: Vec<Sender<Update<F, LF>>>,
 }
 
@@ -48,6 +49,7 @@ where
         let runtime_config = Arc::new(self.runtime_config.clone());
         (0..self.runtime_config.worker_threads)
             .map(|worker_id| {
+                let thread_pool = self.thread_pool.clone();
                 let (tx, rx) = channel(128);
                 let runtime_config = runtime_config.clone();
                 let (finish_tx, mut finish_rx) = futures_channel::oneshot::channel::<()>();
@@ -61,7 +63,10 @@ where
                                 warn!("bind thread {worker_id} to core {core} failed: {e}");
                             }
                         }
-                        let mut runtime = RuntimeWrapper::from(runtime_config.as_ref());
+                        let mut runtime = RuntimeWrapper::new(
+                            runtime_config.as_ref(),
+                            thread_pool.map(|p| p as Box<_>),
+                        );
                         runtime.block_on(async move {
                             worker_controller.run_controller(rx).await;
                             finish_rx.close();
@@ -98,8 +103,12 @@ where
 
 impl<F, LF> Manager<F, LF> {
     pub fn new(runtime_config: RuntimeConfig) -> Self {
+        let thread_pool = runtime_config
+            .thread_pool
+            .map(|tn| Box::new(DefaultThreadPool::new(tn)));
         Self {
             runtime_config,
+            thread_pool,
             workers: Vec::new(),
         }
     }

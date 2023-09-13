@@ -25,6 +25,7 @@ pub struct RuntimeConfig {
     pub runtime_type: RuntimeType,
     #[serde(default = "default_cpu_affinity")]
     pub cpu_affinity: bool,
+    pub thread_pool: Option<usize>,
 }
 
 impl Default for RuntimeConfig {
@@ -35,6 +36,7 @@ impl Default for RuntimeConfig {
             sqpoll_idle: None,
             runtime_type: Default::default(),
             cpu_affinity: default_cpu_affinity(),
+            thread_pool: None,
         }
     }
 }

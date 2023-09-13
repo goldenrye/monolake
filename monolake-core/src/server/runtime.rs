@@ -16,8 +16,11 @@ pub enum RuntimeWrapper {
     Legacy(Runtime<TimeDriver<LegacyDriver>>),
 }
 
-impl From<&RuntimeConfig> for RuntimeWrapper {
-    fn from(_config: &RuntimeConfig) -> Self {
+impl RuntimeWrapper {
+    pub fn new(
+        _config: &RuntimeConfig,
+        thread_pool: Option<Box<dyn monoio::blocking::ThreadPool + Send + 'static>>,
+    ) -> Self {
         #[cfg(target_os = "linux")]
         let runtime_type =
             if _config.runtime_type == RuntimeType::IoUring && monoio::utils::detect_uring() {
@@ -41,18 +44,19 @@ impl From<&RuntimeConfig> for RuntimeWrapper {
                     }
                     None => RuntimeBuilder::<monoio::IoUringDriver>::new(),
                 };
-                let runtime = builder
-                    .enable_timer()
-                    .with_entries(_config.entries)
-                    .build()
-                    .unwrap();
+                let mut builder = builder.enable_timer().with_entries(_config.entries);
+                if let Some(tp) = thread_pool {
+                    builder = builder.attach_thread_pool(tp);
+                }
+                let runtime = builder.build().unwrap();
                 RuntimeWrapper::IoUring(runtime)
             }
             RuntimeType::Legacy => {
-                let runtime = RuntimeBuilder::<monoio::LegacyDriver>::new()
-                    .enable_timer()
-                    .build()
-                    .unwrap();
+                let mut builder = RuntimeBuilder::<monoio::LegacyDriver>::new().enable_timer();
+                if let Some(tp) = thread_pool {
+                    builder = builder.attach_thread_pool(tp);
+                }
+                let runtime = builder.build().unwrap();
                 RuntimeWrapper::Legacy(runtime)
             }
         }
