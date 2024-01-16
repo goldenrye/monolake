@@ -26,7 +26,7 @@ vendored = ["native-tls?/vendored"]
 monoio = { workspace = true, features = ['splice'] }
 monolake-core = { path = "../monolake-core" }
 monoio-http = { workspace = true }
-monoio-http-client = { workspace = true, features = [
+monoio-transports = { workspace = true, features = [
     "logging",
     "rustls-unsafe-io",
 ] }
