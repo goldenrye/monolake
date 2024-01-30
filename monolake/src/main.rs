@@ -57,6 +57,7 @@ async fn main() -> Result<()> {
     // Construct Service Factory and Listener Factory
     for (name, ServiceConfig { listener, server }) in config.servers.into_iter() {
         let lis_fac = ListenerBuilder::try_from(listener).expect("build listener failed");
+
         let svc_fac = l7_factory(server);
 
         manager

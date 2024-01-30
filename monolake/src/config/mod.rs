@@ -15,9 +15,18 @@ pub struct Config {
     pub servers: HashMap<String, ServiceConfig<ListenerConfig, ServerConfig>>,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ProxyType {
+    #[default]
+    Http,
+    Thrift,
+}
+
 #[derive(Debug, Clone)]
 pub struct ServerConfig {
     pub name: String,
+    pub proxy_type: ProxyType,
     #[cfg(feature = "tls")]
     pub tls: monolake_services::tls::TlsConfig,
     pub routes: Vec<RouteConfig>,
@@ -28,6 +37,8 @@ pub struct ServerConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerUserConfig {
     pub name: String,
+    #[serde(default)]
+    pub proxy_type: ProxyType,
     pub tls: Option<TlsUserConfig>,
     pub routes: Vec<RouteConfig>,
     pub keepalive_sec: Option<u64>,
@@ -117,6 +128,7 @@ impl Config {
                 ServiceConfig {
                     server: ServerConfig {
                         name: server.name,
+                        proxy_type: server.proxy_type,
                         #[cfg(feature = "tls")]
                         tls,
                         routes: server.routes,
