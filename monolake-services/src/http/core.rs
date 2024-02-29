@@ -32,13 +32,19 @@ use super::{generate_response, util::AccompanyPair};
 pub struct HttpCoreService<H> {
     handler_chain: H,
     keepalive_timeout: Duration,
+    http_timeout: Option<Duration>,
 }
 
 impl<H> HttpCoreService<H> {
-    pub fn new(handler_chain: H, keepalive_config: Keepalive) -> Self {
+    pub fn new(
+        handler_chain: H,
+        keepalive_config: Keepalive,
+        timeout_config: HttpReadTimeout,
+    ) -> Self {
         HttpCoreService {
             handler_chain,
             keepalive_timeout: keepalive_config.0,
+            http_timeout: timeout_config.0,
         }
     }
 
@@ -282,6 +288,7 @@ impl<F: MakeService> MakeService for HttpCoreService<F> {
                 .handler_chain
                 .make_via_ref(old.map(|o| &o.handler_chain))?,
             keepalive_timeout: self.keepalive_timeout,
+            http_timeout: self.http_timeout,
         })
     }
 }
@@ -300,6 +307,7 @@ impl<F: AsyncMakeService> AsyncMakeService for HttpCoreService<F> {
                 .make_via_ref(old.map(|o| &o.handler_chain))
                 .await?,
             keepalive_timeout: self.keepalive_timeout,
+            http_timeout: self.http_timeout,
         })
     }
 }
@@ -314,11 +322,30 @@ impl Default for Keepalive {
     }
 }
 
+#[derive(Default, Debug, Copy, Clone)]
+pub struct HttpReadTimeout(pub Option<Duration>);
+
+#[derive(Debug, Copy, Clone)]
+pub struct Timeouts {
+    pub keepalive: Keepalive,
+    pub timeout: HttpReadTimeout,
+}
+
+impl Default for Timeouts {
+    fn default() -> Self {
+        const DEFAULT_KEEPALIVE_SEC: u64 = 75;
+        Self {
+            keepalive: Keepalive(Duration::from_secs(DEFAULT_KEEPALIVE_SEC)),
+            timeout: HttpReadTimeout(None),
+        }
+    }
+}
+
 impl<F> HttpCoreService<F> {
     pub fn layer<C>() -> impl FactoryLayer<C, F, Factory = Self>
     where
-        C: Param<Keepalive>,
+        C: Param<Timeouts>,
     {
-        layer_fn(|c: &C, inner| Self::new(inner, c.param()))
+        layer_fn(|c: &C, inner| Self::new(inner, c.param().keepalive, c.param().timeout))
     }
 }
