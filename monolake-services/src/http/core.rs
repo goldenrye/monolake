@@ -107,7 +107,11 @@ impl<H> HttpCoreService<H> {
                             }
                         }
                         Some(http_timeout) => {
-                            match monoio::time::timeout(http_timeout, unsafe { Pin::new_unchecked(&mut f) }).await {
+                            match monoio::time::timeout(http_timeout, unsafe {
+                                Pin::new_unchecked(&mut f)
+                            })
+                            .await
+                            {
                                 Err(_) => {
                                     info!(
                                         "Connection {:?} write timed out",

@@ -1496,9 +1496,9 @@ dependencies = [
 
 [[package]]
 name = "monoio-thrift"
-version = "0.0.3"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6061f305ed04a85d68fb53fa666cee200545f5b820c425d222b40baa6d9dfc35"
+checksum = "86556e7bb717f452203ca7693b3acdbcfdc8c0e1df43130a7c321ad704ce1111"
 dependencies = [
  "byteorder",
  "bytes",
