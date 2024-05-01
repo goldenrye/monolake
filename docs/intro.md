@@ -1,4 +1,4 @@
-# Monolake, a proxy framework base on Rust and io_uring
+# Introduction 
 
 Earlier 2023, Cloudflare released a blog to introduce their Oxy, a Rust-based modern proxy framework. We have the similar requirements at Volcano Engine (a public cloud from Bytedance Inc.), so we start Monolake project, a layer 4/7 proxy framework base on Rust and io_uring.
 

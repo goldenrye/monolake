@@ -1,3 +1,5 @@
+# Installation
+
 ``` bash
 # install hugo
 brew install hugo
