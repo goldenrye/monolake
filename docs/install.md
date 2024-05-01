@@ -1,9 +1,3 @@
-# Overview
-
-The cloudwego folder contains all the wiki content host on [CloudWeGo](https://www.cloudwego.io).
-
-## Preview Wiki
-
 ``` bash
 # install hugo
 brew install hugo
