@@ -1,33 +1,12 @@
-.. Polycube documentation master file, created by
-   sphinx-quickstart on Wed Oct 17 09:10:02 2018.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+{!README.md!}
 
-# Welcome to Polycube's documentation!
+# Welcome to Monolake's documentation!
 
+``Monolake`` is an **light-weight** and **high-performance** framework for **fast** customized proxy development, it provides the basic common functionalities for proxy such as HTTP protocol process, connection pool management etc., while allows to implement customized handler. The framework is written in **Rust** that also inherits the safety, speed of the languages.
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
-   intro.md
-   quickstart.md
-   installation.md
-   architecture.md
-   cubes.md
-   polycubed/polycubed.md
-   polycubectl/polycubectl.md
-   security.md
-   components/iptables/pcn-iptables.md
-   components/k8s/index
-   services/index
-   tutorials/index
-   developers/index
-   advanced-features/open-metrics-support.md
-   
-.. Indices and tables
-.. ==================
-..
-.. * :ref:`genindex`
-.. * :ref:`modindex`
-.. * :ref:`search`
+   monolake.md
+
