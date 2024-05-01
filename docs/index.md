@@ -2,14 +2,11 @@
 
 # Welcome to Monolake's documentation!
 
-**Lumache** (/lu\'make/) is a Python library for cooks and food lovers
-that creates recipes mixing random ingredients. It pulls data from the
-[Open Food Facts database](https://world.openfoodfacts.org/) and offers
-a *simple* and *intuitive* API.
+``Monolake`` is an **light-weight** and **high-performance** framework for **fast** customized proxy development, it provides the basic common functionalities for proxy such as HTTP protocol process, connection pool management etc., while allows to implement customized handler. The framework is written in **Rust** that also inherits the safety, speed of the languages.
 
-Check out the [usage](usage) section for further information, including how to [install](usage#installation) the project.
+.. toctree::
+   :maxdepth: 2
+   :caption: Contents:
 
-!!! note
-
-    This project is under active development.
+   intro.md
 
