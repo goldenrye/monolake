@@ -55,7 +55,6 @@ where
         tracing::trace!("hyper core handling io");
         let poll_io = io.into_poll_io()?;
         let io = MonoioIo::new(poll_io);
-
         let service = HyperServiceWrapper {
             cx,
             handler_chain: self.handler_chain.clone(),
