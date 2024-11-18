@@ -101,10 +101,12 @@ pub struct UpstreamHandler {
 
 impl UpstreamHandler {
     #[cfg(not(feature = "tls"))]
-    pub fn new(connector: HttpConnector, http_upstream_timeout: HttpUpstreamTimeout) -> Self {
+    pub fn new(
+        http_connector: PooledHttpConnector,
+        http_upstream_timeout: HttpUpstreamTimeout,
+    ) -> Self {
         UpstreamHandler {
-            http_upstream_timeout: Default::default(),
-            connector,
+            http_connector,
             http_upstream_timeout,
         }
     }

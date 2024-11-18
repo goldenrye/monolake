@@ -25,7 +25,7 @@
 //! async fn start_server(addr: SocketAddr) -> std::io::Result<()> {
 //!     let builder = ListenerBuilder::bind_tcp(addr, Default::default())?;
 //!     let mut listener = builder.build()?;
-//!     
+//!
 //!     while let Some(Ok((stream, addr))) = listener.next().await {
 //!         // Handle the accepted connection
 //!     }
