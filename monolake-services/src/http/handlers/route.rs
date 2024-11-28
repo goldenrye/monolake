@@ -97,11 +97,10 @@
 //! - Support for more advanced routing patterns (e.g., regex-based routing).
 //! - Enhanced metrics and logging for better observability.
 //! - Integration with service discovery systems for dynamic upstream management.
-use http::{uri::Scheme, HeaderValue, Request, StatusCode};
-use matchit::Router;
+use http::{uri::Scheme, HeaderValue, Request, Response, StatusCode};
 use monoio_http::common::body::FixedBody;
 use monolake_core::{
-    http::{HttpHandler, ResponseWithContinue},
+    http::{HttpError, HttpFatalError, HttpHandler, ResponseWithContinue},
     util::uri_serde,
     AnyError,
 };
@@ -110,113 +109,116 @@ use service_async::{
     layer::{layer_fn, FactoryLayer},
     AsyncMakeService, MakeService, Param, Service,
 };
-use tracing::debug;
 
-use crate::http::generate_response;
+use crate::{
+    common::selector::{
+        IntoWeightedEndpoint, LoadBalanceError, LoadBalanceStrategy, LoadBalancer, Mapping, Select,
+        ServiceRouter,
+    },
+    http::{generate_response, util::HttpErrorResponder},
+};
 
-/// A handler that routes incoming requests to appropriate upstream servers based on configured
-/// routes.
-///
-/// [`RewriteAndRouteHandler`] is responsible for matching incoming request paths against a set of
-/// predefined routes, selecting an appropriate upstream server, and forwarding the request to that
-/// server. It implements the `Service` trait from the `service_async` crate, providing an
-/// asynchronous request handling mechanism.
-///
-/// # Type Parameters
-///
-/// - `H`: The type of the inner handler, which must implement `HttpHandler`.
-///
-/// # Fields
-///
-/// - `inner`: The inner handler that processes requests after routing.
-/// - `router`: A `matchit::Router` containing the routing configuration.
-///
-/// # Usage
-///
-/// This handler is typically created using the [`RewriteAndRouteHandlerFactory`], which allows for
-/// dynamic creation and updates of the routing configuration. It can be integrated into a
-/// service stack using the `layer` method, enabling composition with other services.
-///
-///
-/// # Service Implementation
-///
-/// The `call` method of this handler performs the following steps:
-/// 1. Extracts the path from the incoming request.
-/// 2. Matches the path against the configured routes.
-/// 3. If a match is found:
-///    - Selects an upstream server from the matched route.
-///    - Rewrites the request for the selected upstream.
-///    - Forwards the request to the inner handler.
-/// 4. If no match is found, returns a 404 Not Found response.
-///
-/// # Performance Considerations
-///
-/// This handler uses [`matchit::Router`] for efficient path matching, which is generally
-/// faster than iterative matching for a large number of routes.
-#[derive(Clone)]
-pub struct RewriteAndRouteHandler<H> {
-    inner: H,
-    router: Router<RouteConfig>,
-}
+#[derive(Debug)]
+pub struct Router<T>(pub matchit::Router<T>);
 
-impl<H, CX, B> Service<(Request<B>, CX)> for RewriteAndRouteHandler<H>
-where
-    H: HttpHandler<CX, B>,
-    H::Body: FixedBody,
-{
-    type Response = ResponseWithContinue<H::Body>;
-    type Error = H::Error;
-
-    async fn call(
-        &self,
-        (mut request, ctx): (Request<B>, CX),
-    ) -> Result<Self::Response, Self::Error> {
-        let req_path = request.uri().path();
-        tracing::info!("request path: {req_path}");
-
-        match self.router.at(req_path) {
-            Ok(route) => {
-                let route = route.value;
-                tracing::info!("the route id: {}", route.id);
-                if route.upstreams.len() == 1 {
-                    rewrite_request(&mut request, &route.upstreams[0]);
-                    return self.inner.handle(request, ctx).await;
-                }
-                use rand::seq::SliceRandom;
-                let upstream = route
-                    .upstreams
-                    .choose(&mut rand::thread_rng())
-                    .expect("empty upstream list");
-
-                rewrite_request(&mut request, upstream);
-
-                self.inner.handle(request, ctx).await
-            }
-            Err(e) => {
-                debug!("match request uri: {} with error: {e}", request.uri());
-                Ok((generate_response(StatusCode::NOT_FOUND, false), true))
-            }
+impl Router<LoadBalancer<Endpoint>> {
+    pub fn new_from_iter<I, E>(iter: I) -> Result<Self, RoutingFactoryError<E>>
+    where
+        I: IntoIterator<Item = RouteConfig>,
+    {
+        let mut router = matchit::Router::new();
+        for route in iter {
+            router.insert(
+                &route.path,
+                LoadBalancer::try_from_upstreams(route.load_balancer, route.upstreams).unwrap(),
+            )?;
         }
+        Ok(Self(router))
     }
 }
 
-/// Factory for creating [`RewriteAndRouteHandler`] instances.
-///
-/// This factory implements the [`MakeService`] &
-/// [`AsyncMakeService`] trait, allowing for dynamic creation and updates of
-/// `RewriteAndRouteHandler` instances. It's designed to work with the `service_async` crate's
-/// compositional model.
+#[derive(thiserror::Error, Debug)]
+pub enum RouterError<E> {
+    #[error("route empty")]
+    RouteEmpty,
+    #[error("inner service error: {0:?}")]
+    SelectError(#[from] E),
+}
+
+impl<B: FixedBody, E> HttpError<B> for RouterError<E> {
+    fn to_response(&self) -> Option<Response<B>> {
+        Some(generate_response(StatusCode::NOT_FOUND, false))
+    }
+}
+
+impl<T> Select<str> for Router<T>
+where
+    T: Select<str>,
+{
+    type Output<'a>
+        = T::Output<'a>
+    where
+        Self: 'a;
+
+    type Error = RouterError<T::Error>;
+
+    #[inline]
+    fn select(&self, path: &str) -> Result<Self::Output<'_>, Self::Error> {
+        let Ok(r) = self.0.at(path) else {
+            return Err(RouterError::RouteEmpty);
+        };
+        // We are going to ignore the params since it borrows path,
+        // however, return it requires the lifetime of the request,
+        // which will breaks request ownership movement.
+        r.value.select(path).map_err(RouterError::SelectError)
+    }
+}
+
+pub struct RewriteHandler<H> {
+    inner: H,
+}
+
+impl<'a, H, CX, B> Service<(Request<B>, &'a Endpoint, CX)> for RewriteHandler<H>
+where
+    H: HttpHandler<CX, B>,
+{
+    type Response = ResponseWithContinue<H::Body>;
+    type Error = HttpFatalError<H::Error>;
+
+    #[inline]
+    async fn call(
+        &self,
+        (mut request, ep, cx): (Request<B>, &'a Endpoint, CX),
+    ) -> Result<Self::Response, Self::Error> {
+        rewrite_request(&mut request, ep);
+        return self.inner.handle(request, cx).await.map_err(HttpFatalError);
+    }
+}
+
+pub struct PathExtractor;
+impl<B> Mapping<Request<B>> for PathExtractor {
+    type Out = str;
+    #[inline]
+    fn map<'a>(&self, input: &'a Request<B>) -> &'a Self::Out {
+        input.uri().path()
+    }
+}
+
 pub struct RewriteAndRouteHandlerFactory<F> {
     inner: F,
     routes: Vec<RouteConfig>,
 }
 
+pub type RewriteAndRouteHandler<T> = HttpErrorResponder<
+    ServiceRouter<Router<LoadBalancer<Endpoint>>, RewriteHandler<T>, PathExtractor>,
+>;
+
 #[derive(thiserror::Error, Debug)]
 pub enum RoutingFactoryError<E> {
     #[error("inner error: {0:?}")]
     Inner(E),
-    #[error("empty upstream")]
-    EmptyUpstream,
+    #[error("load balance error: {0:?}")]
+    LoadBalanceError(#[from] LoadBalanceError),
     #[error("router error: {0:?}")]
     Router(#[from] matchit::InsertError),
 }
@@ -226,20 +228,17 @@ impl<F: MakeService> MakeService for RewriteAndRouteHandlerFactory<F> {
     type Error = RoutingFactoryError<F::Error>;
 
     fn make_via_ref(&self, old: Option<&Self::Service>) -> Result<Self::Service, Self::Error> {
-        let mut router: Router<RouteConfig> = Router::new();
-        for route in self.routes.iter() {
-            router.insert(&route.path, route.clone())?;
-            if route.upstreams.is_empty() {
-                return Err(RoutingFactoryError::EmptyUpstream);
-            }
-        }
-        Ok(RewriteAndRouteHandler {
-            inner: self
-                .inner
-                .make_via_ref(old.map(|o| &o.inner))
-                .map_err(RoutingFactoryError::Inner)?,
-            router,
-        })
+        let router = Router::new_from_iter(self.routes.clone())?;
+        Ok(HttpErrorResponder(ServiceRouter {
+            svc: RewriteHandler {
+                inner: self
+                    .inner
+                    .make_via_ref(old.map(|o| &o.0.svc.inner))
+                    .map_err(RoutingFactoryError::Inner)?,
+            },
+            selector: router,
+            selector_mapper: PathExtractor,
+        }))
     }
 }
 
@@ -254,26 +253,19 @@ where
         &self,
         old: Option<&Self::Service>,
     ) -> Result<Self::Service, Self::Error> {
-        let mut router: Router<RouteConfig> = Router::new();
-        for route in self.routes.iter() {
-            router.insert(&route.path, route.clone())?;
-            if route.upstreams.is_empty() {
-                return Err(RoutingFactoryError::EmptyUpstream);
-            }
-        }
-        Ok(RewriteAndRouteHandler {
-            inner: self
-                .inner
-                .make_via_ref(old.map(|o| &o.inner))
-                .await
-                .map_err(RoutingFactoryError::Inner)?,
-            router,
-        })
+        let router = Router::new_from_iter(self.routes.clone())?;
+        Ok(HttpErrorResponder(ServiceRouter {
+            svc: RewriteHandler {
+                inner: self
+                    .inner
+                    .make_via_ref(old.map(|o| &o.0.svc.inner))
+                    .await
+                    .map_err(RoutingFactoryError::Inner)?,
+            },
+            selector: router,
+            selector_mapper: PathExtractor,
+        }))
     }
-}
-
-const fn default_weight() -> u16 {
-    1
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -303,6 +295,9 @@ pub struct RouteConfig {
     #[serde(skip)]
     pub id: String,
 
+    #[serde(default)]
+    pub load_balancer: LoadBalanceStrategy,
+
     /// The path pattern to match incoming requests against.
     ///
     /// This can be an exact path or a pattern supported by the routing system.
@@ -312,6 +307,10 @@ pub struct RouteConfig {
     ///
     /// Multiple upstreams allow for load balancing and failover configurations.
     pub upstreams: Vec<Upstream>,
+}
+
+const fn default_weight() -> u16 {
+    1
 }
 
 /// Configuration for an upstream server.
@@ -329,6 +328,15 @@ pub struct Upstream {
     /// If not specified, it defaults to a value provided by the `default_weight` function.
     #[serde(default = "default_weight")]
     pub weight: u16,
+}
+
+impl IntoWeightedEndpoint for Upstream {
+    type Endpoint = Endpoint;
+
+    #[inline]
+    fn into_weighted_endpoint(self) -> (Self::Endpoint, u16) {
+        (self.endpoint, self.weight)
+    }
 }
 
 /// Represents different types of endpoints for upstream servers.
@@ -367,8 +375,8 @@ impl<F> RewriteAndRouteHandler<F> {
     }
 }
 
-fn rewrite_request<B>(request: &mut Request<B>, upstream: &Upstream) {
-    let remote = match &upstream.endpoint {
+fn rewrite_request<B>(request: &mut Request<B>, endpoint: &Endpoint) {
+    let remote = match endpoint {
         Endpoint::Uri(uri) => uri,
         _ => unimplemented!("not implement"),
     };
@@ -434,6 +442,7 @@ mod tests {
         let total_routes = 1024 * 100;
         (0..total_routes).map(|n| RouteConfig {
             id: "testroute".to_string(),
+            load_balancer: Default::default(),
             path: format!("/{n}"),
             upstreams: Vec::from([Upstream {
                 endpoint: Endpoint::Uri(format!("http://test{n}.endpoint").parse().unwrap()),
@@ -444,7 +453,7 @@ mod tests {
 
     #[test]
     fn test_iterate_match() {
-        let mut router: Router<RouteConfig> = Router::new();
+        let mut router: matchit::Router<RouteConfig> = matchit::Router::new();
         create_routes().for_each(|route| router.insert(route.path.clone(), route).unwrap());
         let routes: Vec<RouteConfig> = create_routes().collect();
         let target_path = "/1024";
